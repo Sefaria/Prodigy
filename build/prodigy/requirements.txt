@@ -1,0 +1,5 @@
+srsly
+spacy==3.4.1
+pymongo
+nltk
+scikit-learn
