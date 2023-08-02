@@ -9,7 +9,6 @@ ENV PRODIGY_HOME=/home/prodigy
 ENV PYTHONPATH "${PYTHONPATH}:${PRODIGY_HOME}"
 WORKDIR /home/prodigy
 
-# Expects the Prodigy python wheel to exist at ./researchprodigy/*
 RUN mkdir ./prodigy_utils
 COPY ./prodigy_utils/* ./prodigy_utils/
 RUN pip3 install ./prodigy*.whl
