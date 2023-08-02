@@ -69,7 +69,7 @@ spec:
           # args: [ "prodigy ner-recipe ner test_data_to_refine test_data_output2 בן-אדם,מקור,קבוצת-אנשים,מקום,מונח,זמן,שם-אלקים -model-dir /prodigy-disk/ner_he --view-id ner_manual -db-host $MONGO_HOST -db-port 27017 -dir rtl -should-add-predictions 1 -train-on-input 0" ]
           # args: ["prodigy ner-recipe webpages_sub_citation webpages_sub_citation_input2 webpages_sub_citation_output /prodigy-disk/webpages_subref_he כותרת,דה,מספר,שם,לקמן-להלן,סימן-טווח,שם-עצמי,לא-רציף --view-id ner_manual -db-host $MONGO_HOST -db-port 27017 -train-on-input 0 -dir rtl"]
           ports:
-            - containerPort: 8090
+            - containerPort: 8080
               protocol: TCP
           resources:
             requests:
@@ -80,12 +80,12 @@ spec:
               cpu: {{ .Values.prodigyAnnotator.resources.limit.cpu }}
           readinessProbe:
             tcpSocket:
-              port: 8090
+              port: 8080
             periodSeconds: 10
             timeoutSeconds: 3
           livenessProbe:
             tcpSocket: 
-              port: 8090
+              port: 8080
             periodSeconds: 10
             timeoutSeconds: 3
           env: 
@@ -121,7 +121,7 @@ spec:
   ports: 
     - protocol: TCP
       port: 80
-      targetPort: 8090
+      targetPort: 8080
   selector:
     app: annotator-{{ .Values.deployEnv }}
 ...
