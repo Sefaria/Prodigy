@@ -1,14 +1,15 @@
-import prodigy, srsly, spacy, re, string
+import prodigy
+import spacy
+import re
+import os
 from spacy.tokenizer import Tokenizer
 from spacy.lang.en import English
 from spacy.lang.he import Hebrew
 from spacy.util import minibatch, compounding
-from prodigy.components.sorters import prefer_uncertain
-from prodigy.components.preprocess import add_tokens, split_spans, split_sentences
-import os
+from prodigy.components.preprocess import add_tokens, split_spans
 from db_manager import MongoProdigyDBManager
-
 from pathlib import Path
+
 
 @spacy.registry.tokenizers("inner_punct_tokenizer")
 def inner_punct_tokenizer_factory():
@@ -23,6 +24,7 @@ def inner_punct_tokenizer_factory():
                          infix_finditer=infix_re.finditer,
                          token_match=None)
     return inner_punct_tokenizer
+
 
 def load_model(model_dir, labels, lang):
     model_exists = model_dir is not None
@@ -45,11 +47,13 @@ def load_model(model_dir, labels, lang):
     nlp.tokenizer = inner_punct_tokenizer_factory()(nlp)
     return nlp, model_exists
 
+
 def save_model(nlp, model_dir):
     model_dir = Path(model_dir)
     if not model_dir.exists():
         model_dir.mkdir()
     nlp.to_disk(model_dir)
+
 
 def train_model(nlp, annotations, model_dir):
     batches = minibatch(annotations, size=compounding(4.0, 32.0, 1.001))
@@ -59,6 +63,7 @@ def train_model(nlp, annotations, model_dir):
     #     nlp.update(batch, losses=losses)  # TODO add drop=0.5
     save_model(nlp, model_dir)
     return losses
+
 
 def add_model_predictions(nlp, stream, min_found=None):
     """
@@ -79,7 +84,8 @@ def score_stream(nlp, stream):
     for example in stream:
         docs = nlp(example['text'])
         score = ner.predict(docs)
-        yield (score[0], example)
+        yield score[0], example
+
 
 def filter_existing_in_output(in_data, my_db:MongoProdigyDBManager):
     def get_key(doc):
@@ -92,10 +98,12 @@ def filter_existing_in_output(in_data, my_db:MongoProdigyDBManager):
         if in_doc_key in existing_keys: continue
         yield in_doc
 
+
 def filter_long_texts(stream, max_length):
     for example in stream:
         if len(example['text']) > max_length: continue
         yield example
+
 
 def split_sentences_nltk(stream):
     """
@@ -111,6 +119,7 @@ def split_sentences_nltk(stream):
             sent_example = example.copy()
             sent_example['text'] = sent
             yield sent_example
+
 
 def train_on_current_output(output_collection='examples2_output'):
     model_dir = '/prodigy-disk/ref_tagging_model_output'
@@ -161,7 +170,6 @@ def ref_tagging_recipe(dataset, input_collection, output_collection, labels, mod
     if view_id == "ner":
         stream = split_spans(stream)
 
-
     def update(annotations):
         prev_annotations = my_db.db.examples.find({}, {"_id": 0}).limit(1000).sort([("_id", -1)])
         all_annotations = list(prev_annotations) + list(annotations)
@@ -203,57 +211,20 @@ def ref_tagging_recipe(dataset, input_collection, output_collection, labels, mod
         }
     }
 
+
 def validate_tokenizer(model_dir, s, lang):
     nlp, _ = load_model(model_dir, ['na'], lang)
     for token in nlp.tokenizer(s):
         print(token.text)
+
 
 def validate_alignment(model_dir, lang, text, entities):
     nlp, exists = load_model(model_dir, ['na'], lang)
     print("Model Exists:", exists)
     print(spacy.training.offsets_to_biluo_tags(nlp.make_doc(text), entities))
 
+
 if __name__ == "__main__":
     model_dir = "/home/nss/sefaria/data/research/prodigy/output/webpages/model-last"
     validate_tokenizer(model_dir, "ה, א-ב", 'he')
     validate_alignment(model_dir, 'he', "פסוקים א-ו", [(0, 8, 'מספר'), (8, 9, 'סימן-טווח'), (9, 10, 'מספר')])
-
-"""
-command to run
-
-cd research/prodigy
-prodigy ref-tagging-recipe ref_tagging test_input models/ref_tagging --view-id ner_manual -db-host localhost -db-port 27017 -F ref_tagging_recipe.py
-
-command to run on examples1_input
-prodigy ref-tagging-recipe ref_tagging2 examples1_input examples2_binary ./research/prodigy/output/ref_tagging_cpu/model-last מקור --view-id ner -db-host localhost -db-port 27017 -F ./research/prodigy/functions.py
-
-command to run on gilyon hashas
-prodigy ref-tagging-recipe ref_tagging2 gilyon_input gilyon_output ./research/prodigy/output/ref_tagging_cpu/model-last מקור --view-id ner_manual -db-host localhost -db-port 27017 -F ./research/prodigy/functions.py
-
-command to run on gilyon hashas sub citation
-prodigy ref-tagging-recipe sub_ref_tagging gilyon_sub_citation_input gilyon_sub_citation_output ./research/prodigy/output/sub_citation/model-best כותרת,דה,מספר,שם,לקמן-להלן,סימן-טווח,שם-עצמי --view-id ner_manual -db-host localhost -db-port 27017 -train-on-input 0 -F ./research/prodigy/functions.py
-
-command to run on yerushalmi
- prodigy ref-tagging-recipe jeru_ref_tagging yerushalmi_input yerushalmi_output2 ./output/yerushalmi_refs/model-last source --view-id ner_manual -db-host localhost -db-port 27017 -dir ltr -F functions.py
-
-command to run on yerushalmi sub-citation
-prodigy ref-tagging-recipe sub_jeru_ref_tagging yerushalmi_sub_citation_input yerushalmi_sub_citation_output ./output/yerushalmi_sub_refs/model-last title,DH,number,ibid,dir-ibid,range-symbol,self-ibid,non-cts --view-id ner_manual -db-host localhost -db-port 27017 -train-on-input 0 -dir ltr -F ./functions.py
-
-"""
-
-"""
-TODO
-use on_load to update model with existing annotations? why would I do that?
-use split_sentences preprocessor instead of manually splitting sentences first
-use prefer_uncertain to prioritize uncertain
-
-^^^ trying to use prefer_uncertain but gettting 
-    score = ner.predict(example)
-TypeError: Argument 'doc' has incorrect type (expected spacy.tokens.doc.Doc, got str)
-
-way to find rare labels
-https://support.prodi.gy/t/best-way-to-annotate-rare-labels-for-classification/1113
-
-way to train spacy model using beam search to get confidence scores for entities
-https://github.com/explosion/spaCy/issues/5915
-"""
