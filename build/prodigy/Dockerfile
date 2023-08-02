@@ -22,4 +22,4 @@ RUN python -m nltk.downloader punkt
 RUN cd ./prodigy_utils && python setup.py develop
 
 ENTRYPOINT [ "/bin/bash", "-c" ]
-EXPOSE 8080
+EXPOSE 8090
