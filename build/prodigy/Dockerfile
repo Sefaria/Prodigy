@@ -12,8 +12,9 @@ WORKDIR /home/prodigy
 RUN mkdir ./prodigy_utils
 COPY ./prodigy_utils/* ./prodigy_utils/
 # assumes cloudbuild has downloaded wheel file from gcs
-COPY ./prodigy*.whl ./
-RUN pip3 install ./prodigy*.whl
+RUN mkdir ./prodigy_wheel
+COPY ./prodigy*.whl ./prodigy_wheel/
+RUN pip3 install ./prodigy_wheel/prodigy*.whl
 
 COPY build/prodigy/requirements.txt ./
 RUN pip3 install -r ./requirements.txt
