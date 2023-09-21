@@ -3,7 +3,7 @@
 # $ docker build -f ./build/prodigy/Dockerfile .
 
 # why cant this be ubuntu?
-FROM gcr.io/production-deployment/base-web:latest
+FROM python:3.7-bullseye
 
 ENV PRODIGY_HOME=/home/prodigy
 ENV PYTHONPATH "${PYTHONPATH}:${PRODIGY_HOME}"
