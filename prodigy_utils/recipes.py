@@ -79,6 +79,12 @@ def add_model_predictions(nlp, stream, min_found=None):
         yield example
 
 
+def filter_labels(stream, labels: set):
+    for example in stream:
+        example['spans'] = [span for span in example['spans'] if span['label'] in labels]
+        yield example
+
+
 def score_stream(nlp, stream):
     ner = nlp.get_pipe("ner")
     for example in stream:
