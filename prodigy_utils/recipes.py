@@ -301,18 +301,34 @@ def add_labels_to_stream(stream, labels):
     "topic_tagging",
     dataset=("The dataset to use", "positional", None, str),
     source=("The source data as a JSONL file", "positional", None, str),
-    label=("One or more comma-separated labels", "option", "l", split_string),
+    # label=("One or more comma-separated labels", "option", "l", split_string),
     exclusive=("Treat classes as mutually exclusive", "flag", "E", bool),
     exclude=("Names of datasets to exclude", "option", "e", split_string),
+
+    output_collection=("Mongo collection to output data to", "positional", None, str),
+    db_host=("Mongo host", "option", None, str),
+    db_port=("Mongo port", "option", None, int),
+    user=("Mongo Username", "option", None, str),
+    replicaset_name=("Mongo Replicaset Name", "option", None, str),
 )
 
 def topic_tagging(
     dataset: str,
     source: str,
-    label: Optional[List[str]] = None,
+    # label: Optional[List[str]] = None,
+    output_collection = "topic_tagging_output",
     exclusive: bool = False,
     exclude: Optional[List[str]] = None,
+
+    db_host="localhost",
+    user="",
+    replicaset_name="",
+    db_port=27017
 ):
+    password = os.getenv('MONGO_PASSWORD', '')
+    my_db = MongoProdigyDBManager(output_collection, host=db_host, port=db_port, user=user, password=password, replicaset_name=replicaset_name)
+    print("OUTPUT: " + str(list(my_db.client.list_databases())))
+    print(f"collection in output db: {my_db.output_collection.count_documents({})}")
     slugs_and_titles = read_labels("topic_tagging/all_slugs_and_titles_for_prodigy.csv")
     stream = prodigize_data(source, slugs_and_titles)
 
@@ -321,6 +337,7 @@ def topic_tagging(
         "view_id": "choice" ,  # Annotation interface to use
         "dataset": dataset,  # Name of dataset to save annotations
         "stream": stream,  # Incoming stream of examples
+        "db": my_db,
         "exclude": exclude,  # List of dataset names to exclude
         "config": {  # Additional config settings, mostly for app UI
             "choice_style": "single" if exclusive else "multiple", # Style of choice interface
@@ -346,7 +363,11 @@ def topic_tagging(
             """,
             "javascript": """
                 function raiseToTopByClassName(className) {
+                    console.log("raiseToTopByClassName");
                     var elements = document.getElementsByClassName(className);
+                    console.log(elements);
+
+                    
                 
                     if (elements.length > 0) {
                         var element = elements[0];
@@ -395,7 +416,7 @@ def topic_tagging(
                 }
               document.addEventListener('prodigymount', function(event) {
                   console.log("mounted");
-                  raiseToTopByClassName('c01106');
+                  raiseToTopByClassName('prodigy-meta');
               })
               let changedColorForRecommended = false;
               document.addEventListener('prodigyupdate', function(event) {
