@@ -1,3 +1,5 @@
+import csv
+
 import prodigy
 import spacy
 import re
@@ -9,6 +11,7 @@ from spacy.util import minibatch, compounding
 from prodigy.components.preprocess import add_tokens, split_spans
 from db_manager import MongoProdigyDBManager
 from pathlib import Path
+
 
 
 @spacy.registry.tokenizers("inner_punct_tokenizer")
@@ -230,7 +233,167 @@ def validate_alignment(model_dir, lang, text, entities):
     print(spacy.training.offsets_to_biluo_tags(nlp.make_doc(text), entities))
 
 
+from typing import List, Optional
+import prodigy
+from prodigy.components.loaders import JSONL
+from prodigy.util import split_string
+import json
+
+#############################################################################
+# Helper functions for adding user provided labels to annotation tasks.
+
+def prodigize_data(filename, slugs_and_titles):
+    options = [{"id": label[0],
+                "html":f"<a href=https://www.sefaria.org/topics/{label[0]} target='_blank'> {label[1]}</a>"}
+               for label in slugs_and_titles]
+    slugs = [slugs_and_title[0] for slugs_and_title in slugs_and_titles]
+    with open(filename, 'r') as file:
+        for line in file:
+            task = {}
+            line = json.loads(line)
+
+            recommended_slugs = [topic["slug"] for topic in line["topics"] if topic["slug"] in slugs]
+
+            text = ''
+            if line['english_text'].strip() != "":
+                text = line['english_text']
+            else:
+                text = line['hebrew_text']
+            task['text'] = text
+            task["meta"] = {"Ref": line["ref"], "url": f"https://www.sefaria.org/{line['ref']}"}
+            task["accept"] = recommended_slugs
+            task["options"] = options
+            yield task
+def read_labels(csv_path):
+    labels = []
+    with open(csv_path, 'r') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            labels.append(row)
+    unique_labels = []
+    for label in labels:
+        if label not in unique_labels:
+            unique_labels.append(label)
+
+    return unique_labels
+
+
+# Recipe decorator with argument annotations: (description, argument type,
+# shortcut, type / converter function called on value before it's passed to
+# the function). Descriptions are also shown when typing --help.
+@prodigy.recipe(
+    "topic_tagging",
+    dataset=("The dataset to use", "positional", None, str),
+    source=("The source data as a JSONL file", "positional", None, str),
+    labels_source=("The labels CSV source file", "positional", None, str),
+    exclusive=("Treat classes as mutually exclusive", "flag", "E", bool),
+    exclude=("Names of datasets to exclude", "option", "e", split_string),
+
+    output_collection=("Mongo collection to output data to", "positional", None, str),
+    db_host=("Mongo host", "option", None, str),
+    db_port=("Mongo port", "option", None, int),
+    user=("Mongo Username", "option", None, str),
+    replicaset_name=("Mongo Replicaset Name", "option", None, str),
+)
+
+def topic_tagging(
+    dataset: str,
+    source: str,
+    labels_source: str,
+    output_collection = "topic_tagging_output",
+    exclusive: bool = False,
+    exclude: Optional[List[str]] = None,
+
+    db_host="localhost",
+    user="",
+    replicaset_name="",
+    db_port=27017
+):
+    password = os.getenv('MONGO_PASSWORD', '')
+    my_db = MongoProdigyDBManager(output_collection, host=db_host, port=db_port, user=user, password=password, replicaset_name=replicaset_name)
+    print("OUTPUT: " + str(list(my_db.client.list_databases())))
+    print(f"collection in output db: {my_db.output_collection.count_documents({})}")
+    slugs_and_titles = read_labels(labels_source)
+    stream = prodigize_data(source, slugs_and_titles)
+
+
+    return {
+        "view_id": "choice" ,  # Annotation interface to use
+        "dataset": dataset,  # Name of dataset to save annotations
+        "stream": stream,  # Incoming stream of examples
+        "db": my_db,
+        "exclude": exclude,  # List of dataset names to exclude
+        "config": {  # Additional config settings, mostly for app UI
+            "choice_style": "single" if exclusive else "multiple", # Style of choice interface
+            "exclude_by": "input", # Hash value used to filter out already seen examples
+            "global_css": """
+            .c0176 {
+                justify-content: space-evenly;
+            }
+            .c0176 > * {
+                width: calc(25% - 5px);
+                margin-bottom: 10px;
+                }
+            .c01106 {
+                text-align: center
+            }
+            .c01101 {
+                display: none;
+            }
+            a {
+              color: inherit;
+              text-decoration: inherit;
+              font-size: large;
+            }
+            
+            """,
+            "javascript": """
+                function raiseToTopByClassName(className) {
+                    console.log("raiseToTopByClassName");
+                    var elements = document.getElementsByClassName(className);
+                
+                    if (elements.length > 0) {
+                        var element = elements[0];
+                        var container = element.parentNode;
+                        container.insertBefore(element, container.firstChild);
+                    } else {
+                        console.error('Element with class ' + className + ' not found.');
+                    }
+                }
+                function styleCheckedCheckboxes(styleObject) {
+                    var checkboxes = document.querySelectorAll('.c0197');
+                    console.log(checkboxes);
+                
+                    checkboxes.forEach(function (checkbox) {
+                        // Apply each style property to the checked checkbox
+                        for (var property in styleObject) {
+                            if (styleObject.hasOwnProperty(property)) {
+                                checkbox.style[property] = styleObject[property];
+                            }
+                        }
+                    });
+                }
+              document.addEventListener('prodigymount', function(event) {
+                  console.log("mounted");
+                  raiseToTopByClassName('prodigy-meta');
+              })
+              let changedColorForRecommended = false;
+              document.addEventListener('prodigyupdate', function(event) {
+                 if (!changedColorForRecommended) {
+                    styleCheckedCheckboxes({"accent-color": "red"});
+                }
+                  changedColorForRecommended = true;
+              })
+              document.addEventListener('prodigyanswer', function(event) {
+                    styleCheckedCheckboxes({"accent-color": "red"});
+              })
+              
+              """
+        },
+    }
+
 if __name__ == "__main__":
-    model_dir = "/home/nss/sefaria/data/research/prodigy/output/webpages/model-last"
-    validate_tokenizer(model_dir, "ה, א-ב", 'he')
-    validate_alignment(model_dir, 'he', "פסוקים א-ו", [(0, 8, 'מספר'), (8, 9, 'סימן-טווח'), (9, 10, 'מספר')])
+    # model_dir = "/home/nss/sefaria/data/research/prodigy/output/webpages/model-last"
+    # validate_tokenizer(model_dir, "ה, א-ב", 'he')
+    # validate_alignment(model_dir, 'he', "פסוקים א-ו", [(0, 8, 'מספר'), (8, 9, 'סימן-טווח'), (9, 10, 'מספר')])
+    prodigy.serve('topic_tagging data topic_tagging/tagging_data_for_prodigy.jsonl topic_tagging/prodigy_labels/art.csv')
