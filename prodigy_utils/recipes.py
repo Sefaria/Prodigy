@@ -247,21 +247,19 @@ def prodigize_data(filename, slugs_and_titles):
                 "html":f"<a href=https://www.sefaria.org/topics/{label[0]} target='_blank'> {label[1]}</a>"}
                for label in slugs_and_titles]
     slugs = [slugs_and_title[0] for slugs_and_title in slugs_and_titles]
-    recommended_char = '&zwnj;'
     with open(filename, 'r') as file:
         for line in file:
             task = {}
             line = json.loads(line)
 
             recommended_slugs = [topic["slug"] for topic in line["topics"] if topic["slug"] in slugs]
-            # options_with_recommended = []
-            # for option in options:
-            #     if option["id"] in recommended_slugs:
-            #         options_with_recommended.append({"id": option["id"], "text": option["text"] + recommended_char})
-            #     else:
-            #         options_with_recommended.append(option)
 
-            task['text'] = line['hebrew_text']
+            text = ''
+            if line['english_text'].strip() != "":
+                text = line['english_text']
+            else:
+                text = line['hebrew_text']
+            task['text'] = text
             task["meta"] = {"Ref": line["ref"], "url": f"https://www.sefaria.org/{line['ref']}"}
             task["accept"] = recommended_slugs
             task["options"] = options
@@ -272,27 +270,13 @@ def read_labels(csv_path):
         reader = csv.reader(csvfile)
         for row in reader:
             labels.append(row)
-    return labels
-# def add_label_options_to_stream(stream, labels):
-#     options = [{"id": label, "text": label} for label in labels]
-#     for task in stream:
-#         task["options"] = options
-#         task["accept"] = ["W", "l"]
-#         yield task
-def add_label_options_to_stream(stream, slugs_and_titles):
-    options = [{"id": label[0], "text": label[1]} for label in slugs_and_titles[:10]]
-    for task in stream:
-        task["options"] = options
-        # task["accept"] = ["holidays"]
-        # task_recommended_slugs = [item["slug"] for ]
-        # for slug in labels:
-        #     if slug in
-        yield task
+    unique_labels = []
+    for label in labels:
+        if label not in unique_labels:
+            unique_labels.append(label)
 
-def add_labels_to_stream(stream, labels):
-    for task in stream:
-        task["label"] = labels[0]
-        yield task
+    return unique_labels
+
 
 # Recipe decorator with argument annotations: (description, argument type,
 # shortcut, type / converter function called on value before it's passed to
@@ -301,7 +285,7 @@ def add_labels_to_stream(stream, labels):
     "topic_tagging",
     dataset=("The dataset to use", "positional", None, str),
     source=("The source data as a JSONL file", "positional", None, str),
-    # label=("One or more comma-separated labels", "option", "l", split_string),
+    labels_source=("The labels CSV source file", "positional", None, str),
     exclusive=("Treat classes as mutually exclusive", "flag", "E", bool),
     exclude=("Names of datasets to exclude", "option", "e", split_string),
 
@@ -315,7 +299,7 @@ def add_labels_to_stream(stream, labels):
 def topic_tagging(
     dataset: str,
     source: str,
-    # label: Optional[List[str]] = None,
+    labels_source: str,
     output_collection = "topic_tagging_output",
     exclusive: bool = False,
     exclude: Optional[List[str]] = None,
@@ -329,7 +313,7 @@ def topic_tagging(
     my_db = MongoProdigyDBManager(output_collection, host=db_host, port=db_port, user=user, password=password, replicaset_name=replicaset_name)
     print("OUTPUT: " + str(list(my_db.client.list_databases())))
     print(f"collection in output db: {my_db.output_collection.count_documents({})}")
-    slugs_and_titles = read_labels("topic_tagging/all_slugs_and_titles_for_prodigy.csv")
+    slugs_and_titles = read_labels(labels_source)
     stream = prodigize_data(source, slugs_and_titles)
 
 
@@ -353,21 +337,20 @@ def topic_tagging(
             .c01106 {
                 text-align: center
             }
+            .c01101 {
+                display: none;
+            }
             a {
               color: inherit;
               text-decoration: inherit;
               font-size: large;
             }
-
             
             """,
             "javascript": """
                 function raiseToTopByClassName(className) {
                     console.log("raiseToTopByClassName");
                     var elements = document.getElementsByClassName(className);
-                    console.log(elements);
-
-                    
                 
                     if (elements.length > 0) {
                         var element = elements[0];
@@ -375,30 +358,6 @@ def topic_tagging(
                         container.insertBefore(element, container.firstChild);
                     } else {
                         console.error('Element with class ' + className + ' not found.');
-                    }
-                }
-                function addStyleToClass(className, styleObject) {
-                    console.log("changed style");
-                    var elements = document.getElementsByClassName(className);
-                
-                    for (var i = 0; i < elements.length; i++) {
-                        var element = elements[i];
-                
-                        // Apply each style property to the element
-                        for (var property in styleObject) {
-                            if (styleObject.hasOwnProperty(property)) {
-                                element.style[property] = styleObject[property];
-                            }
-                        }
-                    }
-                }
-                function addClassToElements(classname1, classname2) {
-                    var elements = document.getElementsByClassName(classname1);
-                
-                    for (var i = 0; i < elements.length; i++) {
-                        var element = elements[i];
-                        console.log(element);
-                        element.classList.add(classname2);
                     }
                 }
                 function styleCheckedCheckboxes(styleObject) {
@@ -429,7 +388,6 @@ def topic_tagging(
                     styleCheckedCheckboxes({"accent-color": "red"});
               })
               
-
               """
         },
     }
@@ -438,4 +396,4 @@ if __name__ == "__main__":
     # model_dir = "/home/nss/sefaria/data/research/prodigy/output/webpages/model-last"
     # validate_tokenizer(model_dir, "ה, א-ב", 'he')
     # validate_alignment(model_dir, 'he', "פסוקים א-ו", [(0, 8, 'מספר'), (8, 9, 'סימן-טווח'), (9, 10, 'מספר')])
-    prodigy.serve('topic_tagging data topic_tagging/tagging_data_for_prodigy.jsonl')
+    prodigy.serve('topic_tagging data topic_tagging/tagging_data_for_prodigy.jsonl topic_tagging/prodigy_labels/art.csv')
