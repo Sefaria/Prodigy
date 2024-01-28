@@ -60,7 +60,7 @@ spec:
       containers:
         - name: prodigy
           image: "{{ .Values.prodigyAnnotator.imageName }}:{{ .Values.prodigyAnnotator.imageTag }}"
-          args: [ "prodigy topic_tagging data /prodigy-disk/topic_tagging/tagging_data_for_prodigy.jsonl /prodigy-disk/topic_tagging/prodigy_labels/art.csv"]
+          args: [ "prodigy topic_tagging data /prodigy-disk/topic_tagging/tagging_data_for_prodigy.jsonl /prodigy-disk/topic_tagging/prodigy_labels/art.csv -db-host $MONGO_HOST -db-port 27017"]
           # args: ["prodigy ner-recipe ref_tagging webpages_en_input webpages_en_output3 Citation -should-add-predictions 1 -model-dir /prodigy-disk/webpages_en -lang en -dir ltr --view-id ner_manual -db-host $MONGO_HOST -db-port 27017"]
 #          args: ["prodigy ner-recipe ref_tagging he_dicta_input he_dicta_output מקור,בן-אדם -lang he -dir rtl --view-id ner_manual -db-host $MONGO_HOST -db-port 27017"]
           # args: [ "while true; do echo Waiting; sleep 100; done" ]
