@@ -264,6 +264,35 @@ def prodigize_data(filename, slugs_and_titles):
             task["accept"] = recommended_slugs
             task["options"] = options
             yield task
+
+def prodigize_data_consecutive_lable_groups(filename, slugs_and_titles_labels_groups):
+
+    lines = []
+    with open(filename, 'r') as file:
+        for line in file:
+            lines.append(json.loads(line))
+    for line in lines:
+        for slugs_and_titles_group in slugs_and_titles_labels_groups:
+            options = [{"id": label[0],
+                        "html": f"<a href=https://www.sefaria.org/topics/{label[0]} target='_blank'> {label[1]}</a>"}
+                       for label in slugs_and_titles_group]
+            slugs = [slugs_and_title[0] for slugs_and_title in slugs_and_titles_group]
+
+            task = {}
+            # line = json.loads(line)
+
+            recommended_slugs = [topic["slug"] for topic in line["topics"] if topic["slug"] in slugs]
+
+            text = ''
+            if line['english_text'].strip() != "":
+                text = line['english_text']
+            else:
+                text = line['hebrew_text']
+            task['text'] = text
+            task["meta"] = {"Ref": line["ref"], "url": f"https://www.sefaria.org/{line['ref']}"}
+            task["accept"] = recommended_slugs
+            task["options"] = options
+            yield task
 def read_labels(csv_path):
     labels = []
     with open(csv_path, 'r') as csvfile:
@@ -276,13 +305,23 @@ def read_labels(csv_path):
             unique_labels.append(label)
 
     return unique_labels
+def read_label_groups(labels_csvs_foldername):
+    label_groups = []
+    csvfiles = os.listdir(labels_csvs_foldername)
+    for file in csvfiles:
+        labels_file = os.path.join(labels_csvs_foldername, file)
+        if os.path.isfile(labels_file):
+            label_groups.append(read_labels(labels_file))
+    return label_groups
+
+
 
 
 # Recipe decorator with argument annotations: (description, argument type,
 # shortcut, type / converter function called on value before it's passed to
 # the function). Descriptions are also shown when typing --help.
 @prodigy.recipe(
-    "topic_tagging",
+    "topic_tagging_recipe",
     dataset=("The dataset to use", "positional", None, str),
     source=("The source data as a JSONL file", "positional", None, str),
     labels_source=("The labels CSV source file", "positional", None, str),
@@ -313,8 +352,11 @@ def topic_tagging(
     my_db = MongoProdigyDBManager(output_collection, host=db_host, port=db_port, user=user, password=password, replicaset_name=replicaset_name)
     print("OUTPUT: " + str(list(my_db.client.list_databases())))
     print(f"collection in output db: {my_db.output_collection.count_documents({})}")
-    slugs_and_titles = read_labels(labels_source)
-    stream = prodigize_data(source, slugs_and_titles)
+    # slugs_and_titles = read_labels(labels_source)
+    # stream = prodigize_data(source, slugs_and_titles)
+    groups_of_labels_slugs_and_titles = read_label_groups(labels_source)
+    stream = prodigize_data_consecutive_lable_groups(source, groups_of_labels_slugs_and_titles)
+
 
 
     return {
@@ -396,4 +438,6 @@ if __name__ == "__main__":
     # model_dir = "/home/nss/sefaria/data/research/prodigy/output/webpages/model-last"
     # validate_tokenizer(model_dir, "ה, א-ב", 'he')
     # validate_alignment(model_dir, 'he', "פסוקים א-ו", [(0, 8, 'מספר'), (8, 9, 'סימן-טווח'), (9, 10, 'מספר')])
-    prodigy.serve('topic_tagging data topic_tagging/tagging_data_for_prodigy.jsonl topic_tagging/prodigy_labels/art.csv')
+    prodigy.serve('topic_tagging_recipe data topic_tagging/tagging_data_for_prodigy.jsonl topic_tagging/prodigy_labels')
+
+    # prodigy.serve("topic_tagging_recipe data /prodigy-disk/topic_tagging/tagging_data_for_prodigy.jsonl /prodigy-disk/topic_tagging/prodigy_labels/art.csv -db-host $MONGO_HOST -db-port 27017")
