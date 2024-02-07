@@ -292,7 +292,9 @@ def prodigize_data_consecutive_lable_groups(filename, slugs_and_titles_labels_gr
             task["meta"] = {"Ref": line["ref"], "url": f"https://www.sefaria.org/{line['ref']}"}
             task["accept"] = recommended_slugs
             task["options"] = options
+            task = prodigy.set_hashes(task)
             yield task
+
 def read_labels(csv_path):
     labels = []
     with open(csv_path, 'r') as csvfile:
@@ -367,7 +369,7 @@ def topic_tagging(
         "exclude": exclude,  # List of dataset names to exclude
         "config": {  # Additional config settings, mostly for app UI
             "choice_style": "single" if exclusive else "multiple", # Style of choice interface
-            "exclude_by": "input", # Hash value used to filter out already seen examples
+            "exclude_by": "task", # Hash value used to filter out already seen examples
             "global_css": """
             .c0176 {
                 justify-content: space-evenly;
