@@ -266,6 +266,7 @@ def prodigize_data(filename, slugs_and_titles):
             yield task
 
 def prodigize_data_consecutive_lable_groups(filename, slugs_and_titles_labels_groups):
+    refs_to_delete_accepted_options = ['Bamidbar Rabbah 1:4']
 
     lines = []
     with open(filename, 'r') as file:
@@ -290,7 +291,8 @@ def prodigize_data_consecutive_lable_groups(filename, slugs_and_titles_labels_gr
                 text = line['hebrew_text']
             task['text'] = text
             task["meta"] = {"Ref": line["ref"], "url": f"https://www.sefaria.org/{line['ref']}"}
-            task["accept"] = recommended_slugs
+            if line["ref"] not in refs_to_delete_accepted_options:
+                task["accept"] = recommended_slugs
             task["options"] = options
             task = prodigy.set_hashes(task)
             yield task
