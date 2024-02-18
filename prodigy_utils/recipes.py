@@ -362,7 +362,9 @@ def topic_tagging(
     stream = prodigize_data_consecutive_lable_groups(source, groups_of_labels_slugs_and_titles)
 
     javascript_code = ''
-    with open('static/topic_tagging.js', 'r') as file:
+    script_folder = os.path.dirname(os.path.realpath(__file__))
+    path_to_js = os.path.join(script_folder, 'static/topic_tagging.js')
+    with open(path_to_js, 'r') as file:
         javascript_code = file.read()
 
 
