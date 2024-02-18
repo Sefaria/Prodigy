@@ -361,6 +361,10 @@ def topic_tagging(
     groups_of_labels_slugs_and_titles = read_label_groups(labels_source)
     stream = prodigize_data_consecutive_lable_groups(source, groups_of_labels_slugs_and_titles)
 
+    javascript_code = ''
+    with open('static/topic_tagging.js', 'r') as file:
+        javascript_code = file.read()
+
 
 
     return {
@@ -393,48 +397,49 @@ def topic_tagging(
             }
             
             """,
-            "javascript": """
-                function raiseToTopByClassName(className) {
-                    console.log("raiseToTopByClassName");
-                    var elements = document.getElementsByClassName(className);
-                
-                    if (elements.length > 0) {
-                        var element = elements[0];
-                        var container = element.parentNode;
-                        container.insertBefore(element, container.firstChild);
-                    } else {
-                        console.error('Element with class ' + className + ' not found.');
-                    }
-                }
-                function styleCheckedCheckboxes(styleObject) {
-                    var checkboxes = document.querySelectorAll('.c0197');
-                    console.log(checkboxes);
-                
-                    checkboxes.forEach(function (checkbox) {
-                        // Apply each style property to the checked checkbox
-                        for (var property in styleObject) {
-                            if (styleObject.hasOwnProperty(property)) {
-                                checkbox.style[property] = styleObject[property];
-                            }
-                        }
-                    });
-                }
-              document.addEventListener('prodigymount', function(event) {
-                  console.log("mounted");
-                  raiseToTopByClassName('prodigy-meta');
-              })
-              let changedColorForRecommended = false;
-              document.addEventListener('prodigyupdate', function(event) {
-                 if (!changedColorForRecommended) {
-                    styleCheckedCheckboxes({"accent-color": "red"});
-                }
-                  changedColorForRecommended = true;
-              })
-              document.addEventListener('prodigyanswer', function(event) {
-                    styleCheckedCheckboxes({"accent-color": "red"});
-              })
-              
-              """
+            "javascript": javascript_code
+              #   """
+              #   function raiseToTopByClassName(className) {
+              #       console.log("raiseToTopByClassName");
+              #       var elements = document.getElementsByClassName(className);
+              #
+              #       if (elements.length > 0) {
+              #           var element = elements[0];
+              #           var container = element.parentNode;
+              #           container.insertBefore(element, container.firstChild);
+              #       } else {
+              #           console.error('Element with class ' + className + ' not found.');
+              #       }
+              #   }
+              #   function styleCheckedCheckboxes(styleObject) {
+              #       var checkboxes = document.querySelectorAll('.c0197');
+              #       console.log(checkboxes);
+              #
+              #       checkboxes.forEach(function (checkbox) {
+              #           // Apply each style property to the checked checkbox
+              #           for (var property in styleObject) {
+              #               if (styleObject.hasOwnProperty(property)) {
+              #                   checkbox.style[property] = styleObject[property];
+              #               }
+              #           }
+              #       });
+              #   }
+              # document.addEventListener('prodigymount', function(event) {
+              #     console.log("mounted");
+              #     raiseToTopByClassName('prodigy-meta');
+              # })
+              # let changedColorForRecommended = false;
+              # document.addEventListener('prodigyupdate', function(event) {
+              #    if (!changedColorForRecommended) {
+              #       styleCheckedCheckboxes({"accent-color": "red"});
+              #   }
+              #     changedColorForRecommended = true;
+              # })
+              # document.addEventListener('prodigyanswer', function(event) {
+              #       styleCheckedCheckboxes({"accent-color": "red"});
+              # })
+              #
+              # """
         },
     }
 
