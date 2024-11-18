@@ -98,7 +98,7 @@ def score_stream(nlp, stream):
 
 def filter_existing_in_output(in_data, my_db:MongoProdigyDBManager):
     def get_key(doc):
-        return tuple(sorted(doc['meta'].items(), key=lambda x: x[0]))
+        return tuple(doc['text'] + list(sorted(doc.get('meta', {}).items(), key=lambda x: x[0])))
     existing_keys = set()
     for doc in my_db.output_collection.find({}):
         existing_keys.add(get_key(doc))
@@ -171,17 +171,11 @@ def ref_tagging_recipe(dataset, input_collection, output_collection, labels, mod
         train_model(nlp, temp_stream, model_dir)
     all_data = list(getattr(my_db.db, input_collection).find({}, {"_id": 0}))  # TODO loading all data into ram to avoid issues of cursor timing out
     stream = filter_existing_in_output(all_data, my_db)
-    stream = list(stream)
-    print("CURR STREAM 1", len(stream))
     # stream = split_sentences_nltk(stream)
     stream = filter_long_texts(stream, max_length=5000)
-    stream = list(stream)
-    print("CURR STREAM 2", len(stream))
     if model_exists and should_add_predictions == 1:
         stream = add_model_predictions(nlp, stream, min_found=1)
     stream = add_tokens(nlp, stream, skip=True)
-    stream = list(stream)
-    print("CURR STREAM 3", len(stream))
     if view_id == "ner":
         stream = split_spans(stream)
 
@@ -194,9 +188,6 @@ def ref_tagging_recipe(dataset, input_collection, output_collection, labels, mod
     def progress(ctrl, update_return_value):
         return update_return_value
         #return ctrl.session_annotated / getattr(my_db.db, input_collection).count_documents({})
-
-    stream = list(stream)
-    print("FINAL STREAM", len(stream))
 
     return {
         "db": my_db,
