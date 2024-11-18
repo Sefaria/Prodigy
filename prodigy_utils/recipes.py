@@ -170,6 +170,7 @@ def ref_tagging_recipe(dataset, input_collection, output_collection, labels, mod
         temp_stream = getattr(my_db.db, input_collection).find({}, {"_id": 0})
         train_model(nlp, temp_stream, model_dir)
     all_data = list(getattr(my_db.db, input_collection).find({}, {"_id": 0}))  # TODO loading all data into ram to avoid issues of cursor timing out
+    print("CURR STREAM", len(all_data))
     stream = filter_existing_in_output(all_data, my_db)
     # stream = split_sentences_nltk(stream)
     stream = filter_long_texts(stream, max_length=5000)
@@ -188,6 +189,9 @@ def ref_tagging_recipe(dataset, input_collection, output_collection, labels, mod
     def progress(ctrl, update_return_value):
         return update_return_value
         #return ctrl.session_annotated / getattr(my_db.db, input_collection).count_documents({})
+
+    stream = list(stream)
+    print("FINAL STREAM", len(stream))
 
     return {
         "db": my_db,
