@@ -30,12 +30,14 @@ steps:
     args: ['gsutil', 'cp', 'gs://${_SEFARIA_BUILD_ARTIFACT_REPO}/prodigy/${_PRODIGY_WHEEL_FILENAME}', './prodigy_utils/${_PRODIGY_WHEEL_FILENAME}']
     id: retrieve_prodigy_binary
   - name: gcr.io/cloud-builders/gcloud
+    id: who_am_i
     entrypoint: bash
     args:
-    - -c
-    - |
-      echo "Creds that Cloud Build wrote:"
-      cat /builder/home/.docker/config.json
+      - -eu
+      - |
+        TOK=$(gcloud auth print-access-token)
+        curl -s https://oauth2.googleapis.com/tokeninfo?access_token=${TOK} \
+          | python -m json.tool
 
   - name: gcr.io/kaniko-project/executor:latest
     env:
