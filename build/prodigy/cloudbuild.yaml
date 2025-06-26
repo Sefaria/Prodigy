@@ -29,8 +29,17 @@ steps:
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     args: ['gsutil', 'cp', 'gs://${_SEFARIA_BUILD_ARTIFACT_REPO}/prodigy/${_PRODIGY_WHEEL_FILENAME}', './prodigy_utils/${_PRODIGY_WHEEL_FILENAME}']
     id: retrieve_prodigy_binary
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+    - -c
+    - |
+      echo "Creds that Cloud Build wrote:"
+      jq . /builder/home/.docker/config.json
 
   - name: gcr.io/kaniko-project/executor:latest
+    env:
+    - DOCKER_CONFIG=/builder/home/.docker
     args:
       - --destination=us-east1-docker.pkg.dev/production-deployment/containers/prodigy-annotator:$BUILD_ID
       - --destination=us-east1-docker.pkg.dev/production-deployment/containers/prodigy-annotator:latest
