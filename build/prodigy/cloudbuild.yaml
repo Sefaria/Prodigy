@@ -35,7 +35,7 @@ steps:
     - -c
     - |
       echo "Creds that Cloud Build wrote:"
-      jq . /builder/home/.docker/config.json
+      cat /builder/home/.docker/config.json
 
   - name: gcr.io/kaniko-project/executor:latest
     env:
