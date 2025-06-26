@@ -33,11 +33,12 @@ steps:
     id: who_am_i
     entrypoint: bash
     args:
-      - -eu
+      - -euc
       - |
-        TOK=$(gcloud auth print-access-token)
-        curl -s https://oauth2.googleapis.com/tokeninfo?access_token=${TOK} \
-          | python -m json.tool
+        # Dollar signs are doubled so Cloud Build leaves them alone
+        SA_EMAIL=$$(gcloud auth list --filter=status:ACTIVE --format='value(account)')
+        echo "Cloud Build is running as: $$SA_EMAIL"
+
 
   - name: gcr.io/kaniko-project/executor:latest
     env:
