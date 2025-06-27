@@ -1,7 +1,7 @@
 ---
 deployEnv: default
 prodigyAnnotator:
-  imageName: us-east1-docker.pkg.dev/production-deployment/containers/prodigy-annotator
+  imageName: us-east1-docker.pkg.dev/$PROJECT_ID/containers/prodigy-annotator
   mongoHostname: ""
   resources:
     request:
