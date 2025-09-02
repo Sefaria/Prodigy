@@ -86,9 +86,6 @@ steps:
       - 'KUBECTL_VERSION=1.14'
       - 'KUBECONFIG=/root/.kube/config'
       - 'USE_GKE_GCLOUD_AUTH_PLUGIN=True'
-    volumes:
-      - name: kube
-        path: /kube
     wait_for:
       - build_prodigy_container
       - prodigy_username
