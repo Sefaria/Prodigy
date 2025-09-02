@@ -53,7 +53,7 @@ steps:
     wait_for: 
       - retrieve_prodigy_binary
   
-  - name: "ghcr.io/helm/helm:v3.18.6"
+  - name: "docker.io/alpine/helm:v3.18.6"
     id: deploy_prodigy
     args: ["upgrade", "-i", "annotator-${_ENV_NAME}", "./build/prodigy/annotator", "--namespace", "${_GKE_NAMESPACE}", "--debug", "--set-string=deployEnv=${_ENV_NAME},prodigyAnnotator.imageName=us-east1-docker.pkg.dev/$PROJECT_ID/containers/prodigy-annotator,prodigyAnnotator.imageTag=$BUILD_ID,prodigyAnnotator.mongoHostname=${_MONGO_HOSTNAME}", "--set-file=prodigyAnnotator.username=prodigy_username.txt,prodigyAnnotator.password=prodigy_password.txt,prodigyAnnotator.loadBalancerIP=prodigy_ipaddress.txt"]
     env:
