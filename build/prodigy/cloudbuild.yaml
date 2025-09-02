@@ -53,14 +53,42 @@ steps:
     wait_for: 
       - retrieve_prodigy_binary
   
-  - name: "docker.io/alpine/helm:3.18"
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: deploy_prodigy
-    args: ["upgrade", "-i", "annotator-${_ENV_NAME}", "./build/prodigy/annotator", "--namespace", "${_GKE_NAMESPACE}", "--debug", "--set-string=deployEnv=${_ENV_NAME},prodigyAnnotator.imageName=us-east1-docker.pkg.dev/$PROJECT_ID/containers/prodigy-annotator,prodigyAnnotator.imageTag=$BUILD_ID,prodigyAnnotator.mongoHostname=${_MONGO_HOSTNAME}", "--set-file=prodigyAnnotator.username=prodigy_username.txt,prodigyAnnotator.password=prodigy_password.txt,prodigyAnnotator.loadBalancerIP=prodigy_ipaddress.txt"]
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        # Install helm quickly
+        apt-get update -y && apt-get install -y curl ca-certificates
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+        # (Optional) auth for Artifact Registry pulls, if your chart uses images from AR
+        gcloud auth configure-docker us-east1-docker.pkg.dev -q
+
+        # Fetch kube credentials into the shared kubeconfig
+        gcloud container clusters get-credentials "${_GKE_CLUSTER}" \
+          --region "${_GKE_REGION}" --project "${PROJECT_ID}"
+
+        # Sanity check
+        kubectl get ns
+        helm version
+
+        # Run your upgrade/install
+        helm upgrade -i "annotator-${_ENV_NAME}" "./build/prodigy/annotator" \
+          --namespace "${_GKE_NAMESPACE}" \
+          --debug \
+          --set-string=deployEnv=${_ENV_NAME},prodigyAnnotator.imageName=us-east1-docker.pkg.dev/$PROJECT_ID/containers/prodigy-annotator,prodigyAnnotator.imageTag=$BUILD_ID,prodigyAnnotator.mongoHostname=${_MONGO_HOSTNAME}
+          --set-file=prodigyAnnotator.username=prodigy_username.txt,prodigyAnnotator.password=prodigy_password.txt,prodigyAnnotator.loadBalancerIP=prodigy_ipaddress.txt
     env:
       - 'CLOUDSDK_COMPUTE_ZONE=${_GKE_ZONE}'
       - 'CLOUDSDK_CONTAINER_CLUSTER=${_GKE_CLUSTER_NAME}'
       - 'KUBECTL_VERSION=1.14'
       - 'KUBECONFIG=/root/.kube/config'
+      - 'USE_GKE_GCLOUD_AUTH_PLUGIN=True'
+    volumes:
+      - name: kube
+        path: /kube
     wait_for:
       - build_prodigy_container
       - prodigy_username
