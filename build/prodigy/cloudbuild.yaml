@@ -67,8 +67,8 @@ steps:
         gcloud auth configure-docker us-east1-docker.pkg.dev -q
 
         # Fetch kube credentials into the shared kubeconfig
-        gcloud container clusters get-credentials "${_GKE_CLUSTER}" \
-          --region "${_GKE_REGION}" --project "${PROJECT_ID}"
+        gcloud container clusters get-credentials "${_GKE_CLUSTER_NAME}" \
+          --zone "${_GKE_ZONE}" --project $PROJECT_ID
 
         # Sanity check
         kubectl get ns
